@@ -1,4 +1,4 @@
-# Open Source AWS threat model application Hosted on ECS with Terraform 🚀
+# AWS threat model application Hosted on ECS with Terraform 🚀
 
 This project is based on Amazon's Threat Composer Tool, an open source tool designed to facilitate threat modeling and improve security assessments. You can explore the tool's dashboard here: [Threat Composer Tool](https://awslabs.github.io/threat-composer/workspaces/default/dashboard)
 
