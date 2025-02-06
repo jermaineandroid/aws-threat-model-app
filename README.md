@@ -12,7 +12,7 @@ This project is based on Amazon's Threat Composer Tool, an open source tool desi
 
 - Make sure the app is live on `https://tm.<your-domain>` or `https://tm.labs.<your-domain>`
 
-- App must use HTTPS. Hosted on ECS. Figure out the rest. Once app is live, add screenshots to the README.md file.
+- Once app is live, add screenshots to the README.md file.
 
 - Add architecture diagram of how the infrastructure is setup. (Use Lucidchart or draw.io or mermaid) You are free to use any diagramming tool.
 
