@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline with Security Scanning
 
 on:
   push:
@@ -6,11 +6,12 @@ on:
       - main  # Trigger pipeline when code is pushed to the main branch
 
 jobs:
-  build-and-push:
+  build-scan-push:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+      security-events: write  # Required for GitHub code scanning integration
     steps:
       # Step 1: Checkout the code
       - name: Checkout code
@@ -20,7 +21,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Step 3: Log in to AWS ECR
+      # Step 3: Scan repository for vulnerable dependencies
+      - name: Dependency vulnerability scanning
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Fail pipeline on critical/high vulnerabilities
+          ignore-unfixed: true  # Optional: ignore vulnerabilities that don't have fixes
+
+      # Step 4: Upload vulnerability scan results to GitHub Security tab
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()  # Run this step even if the previous step fails
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # Step 5: Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
@@ -28,17 +48,47 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1  # Replace with your AWS region
 
-      # Step 4: Login to Amazon ECR
+      # Step 6: Login to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Step 5: Build, tag, and push the Docker image to ECR
-      - name: Build, tag, and push image to Amazon ECR
+      # Step 7: Build Docker image
+      - name: Build Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: threat-composer
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      # Step 8: Scan Docker image for vulnerabilities
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ steps.login-ecr.outputs.registry }}/threat-composer:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Fail pipeline on critical/high vulnerabilities
+          ignore-unfixed: true  # Optional: ignore vulnerabilities that don't have fixes
+
+      # Step 9: Upload Docker image scan results
+      - name: Upload Docker image scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()  # Run this step even if the previous step fails
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+          category: 'container-image'
+
+      # Step 10: Push the Docker image to ECR (only if all scans pass)
+      - name: Push image to Amazon ECR
+        if: success()  # Only run if all previous steps succeeded
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: threat-composer
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
