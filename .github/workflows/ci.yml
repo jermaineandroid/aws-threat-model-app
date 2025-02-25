@@ -25,6 +25,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1  # Replace with your AWS region
+          env:
+            ACTIONS_STEP_DEBUG: true  # Enable debug logging
 
       # Step 4: Build the Docker image
       - name: Build Docker image
