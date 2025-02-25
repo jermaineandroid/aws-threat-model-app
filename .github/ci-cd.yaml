@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Trigger pipeline when code is pushed to the main branch
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Docker
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Step 3: Log in to AWS ECR
+      - name: Log in to AWS ECR
+        id: login-ecr
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: <your-region>  # Replace with your AWS region (e.g., us-east-1)
+
+      # Step 4: Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t threat-composer .
+
+      # Step 5: Tag the Docker image
+      - name: Tag Docker image
+        run: |
+          docker tag threat-composer:latest <aws_account_id>.dkr.ecr.<region>.amazonaws.com/threat-composer:latest
+
+      # Step 6: Push the Docker image to ECR
+      - name: Push Docker image
+        run: |
+          docker push <aws_account_id>.dkr.ecr.<region>.amazonaws.com/threat-composer:latest
