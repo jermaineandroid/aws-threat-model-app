@@ -35,3 +35,7 @@ serve -s build
 ## Advice & Tips �
 
 - Use best practices for your Terraform code. Use best practices for your container image. Use best practices for your CI/CD pipeline.
+
+
+![image](https://github.com/user-attachments/assets/df5d3be4-f3f2-435d-80f2-b848189c2bbd)
+
